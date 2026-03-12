@@ -21,6 +21,16 @@ dependencies = [
     "pydantic-settings<3.0.0,>=2.2.1",
     "sentry-sdk[fastapi]<2.0.0,>=1.40.6",
     "pyjwt<3.0.0,>=2.8.0",
+    # RAG dependencies
+    "openai>=1.35.0,<2.0.0",
+    "chromadb>=0.4.15,<1.0.0",
+    "PyPDF2>=3.0.0,<4.0.0",
+    "tiktoken>=0.7.0,<1.0.0",
+    "langchain>=0.2.0,<1.0.0",
+    "langchain-openai>=0.1.0,<1.0.0",
+    "langchain-chroma>=0.1.0,<1.0.0",
+    "better-profanity>=0.7.0,<1.0.0",
+    "aiofiles>=23.2.0,<24.0.0",
 ]
 
 [tool.uv]

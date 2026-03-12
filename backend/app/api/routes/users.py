@@ -1,3 +1,6 @@
+# If your users.py is completely broken, replace it with this minimal working version
+# Save this as: backend/app/api/routes/users.py
+
 import uuid
 from typing import Any
 
@@ -23,6 +26,8 @@ from app.models import (
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
+    Organization,
+    UserRole
 )
 from app.utils import generate_new_account_email, send_email
 
@@ -38,7 +43,6 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
     """
     Retrieve users.
     """
-
     count_statement = select(func.count()).select_from(User)
     count = session.exec(count_statement).one()
 
@@ -82,7 +86,6 @@ def update_user_me(
     """
     Update own user.
     """
-
     if user_in.email:
         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id:
@@ -143,6 +146,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
+    Enhanced to support organization assignment.
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
@@ -150,6 +154,21 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
             status_code=400,
             detail="The user with this email already exists in the system",
         )
+    
+    # Validate organization if provided
+    if user_in.organization_id:
+        organization = session.get(Organization, user_in.organization_id)
+        if not organization:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization not found"
+            )
+        if not organization.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Organization is not active"
+            )
+    
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
     return user
@@ -187,7 +206,6 @@ def update_user(
     """
     Update a user.
     """
-
     db_user = session.get(User, user_id)
     if not db_user:
         raise HTTPException(
@@ -224,3 +242,59 @@ def delete_user(
     session.delete(user)
     session.commit()
     return Message(message="User deleted successfully")
+
+
+# New organization-related endpoints
+@router.post("/join-organization/{organization_id}")
+def join_organization_by_code(
+    organization_id: uuid.UUID,
+    session: SessionDep,
+    current_user: CurrentUser
+) -> Message:
+    """
+    Allow current user to join an organization by ID.
+    """
+    organization = session.get(Organization, organization_id)
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    if not organization.is_active:
+        raise HTTPException(status_code=400, detail="Organization is not accepting new members")
+    
+    if current_user.organization_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="You are already a member of an organization. Contact support to change organizations."
+        )
+    
+    current_user.organization_id = organization_id
+    session.add(current_user)
+    session.commit()
+    
+    return Message(message=f"Successfully joined {organization.name}")
+
+
+@router.get("/my-organization", response_model=UsersPublic)
+def read_organization_users(
+    session: SessionDep, 
+    current_user: CurrentUser,
+    skip: int = 0, 
+    limit: int = 100
+) -> Any:
+    """
+    Retrieve users from the current user's organization.
+    """
+    if not current_user.organization_id:
+        return UsersPublic(data=[], count=0)
+    
+    count_statement = select(func.count()).select_from(User).where(
+        User.organization_id == current_user.organization_id
+    )
+    count = session.exec(count_statement).one()
+
+    statement = select(User).where(
+        User.organization_id == current_user.organization_id
+    ).offset(skip).limit(limit)
+    users = session.exec(statement).all()
+
+    return UsersPublic(data=users, count=count)

@@ -31,12 +31,26 @@ class Settings(BaseSettings):
         env_ignore_empty=True,
         extra="ignore",
     )
+    OPENAI_API_KEY: str = ""
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    CHAT_MODEL: str = "gpt-4o-mini"
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
+    ALLOWED_FILE_TYPES: list = ["application/pdf"]
+    # Vector Database
+    VECTOR_DB_PATH: str = "./data/chroma"
+    VECTOR_COLLECTION_NAME: str = "spiritual_documents"
+
+    # Content Filtering  
+    ENABLE_CONTENT_FILTER: bool = True
+    CRISIS_KEYWORDS: list = ["suicide", "kill myself", "end my life", "want to die"]
 
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str, BeforeValidator(parse_cors)

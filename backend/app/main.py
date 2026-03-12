@@ -5,6 +5,9 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.api.routes import rag
+from app.api.routes import upload
+from app.api.routes import chat
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -31,3 +34,6 @@ if settings.all_cors_origins:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(rag.router, prefix="/api/v1/rag", tags=["rag"])
+app.include_router(upload.router, prefix="/api/v1/upload", tags=["upload"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
